@@ -14,5 +14,9 @@ def chat(request: ChatRequest):
 
     return ChatResponse(
         question=request.question,
-        answer=answer
+        answer=answer,
+        disclaimer=(
+            "This chatbot provides general health information only "
+            "and does not replace professional medical advice."
+        )
     )
