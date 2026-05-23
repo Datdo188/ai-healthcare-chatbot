@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: ai-healthcare-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_healthcare
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_healthcare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   ollama:
     image: ollama/ollama:latest
     container_name: ai-healthcare-ollama
@@ -18,10 +36,30 @@ services:
     env_file:
       - ./backend/.env.docker
     volumes:
+      - ./backend/app:/app/app
       - ./data:/app/data
     depends_on:
-      - ollama
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+    frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-healthcare-frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend/src:/app/src
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   ollama_data:

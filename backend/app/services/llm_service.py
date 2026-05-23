@@ -1,19 +1,16 @@
 import requests
+
 from app.core.config import settings
 from app.prompts.healthcare_prompt import build_healthcare_prompt
 
 
-def generate_response(question: str) -> str:
-    """
-    Generate response using Ollama local LLM.
-    """
-
+def generate_response(question: str, context: str = "") -> str:
     if not question.strip():
         return "Please enter a healthcare-related question."
 
     payload = {
         "model": settings.OLLAMA_MODEL,
-        "prompt": build_healthcare_prompt(question),
+        "prompt": build_healthcare_prompt(question, context),
         "stream": False,
         "options": {
             "temperature": 0.7,

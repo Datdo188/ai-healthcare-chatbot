@@ -1,6 +1,8 @@
 import requests
 from fastapi import APIRouter
+
 from app.core.config import settings
+from app.db.database import check_database_connection
 
 router = APIRouter(
     prefix="/health",
@@ -42,3 +44,21 @@ def ollama_health_check():
             "ollama_url": settings.OLLAMA_URL,
             "message": str(error)
         }
+
+
+@router.get("/database")
+def database_health_check():
+    is_connected = check_database_connection()
+
+    if is_connected:
+        return {
+            "status": "ok",
+            "database": "PostgreSQL",
+            "message": "Database connection is healthy"
+        }
+
+    return {
+        "status": "error",
+        "database": "PostgreSQL",
+        "message": "Database connection failed"
+    }
