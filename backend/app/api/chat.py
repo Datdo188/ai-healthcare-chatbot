@@ -12,15 +12,12 @@ from app.models.schemas import (
     MessageResponse,
 )
 from app.services.auth_service import get_current_user
-from app.services.chat_history_service import (
-    delete_user_chat_history,
-    delete_user_chat_message,
-    get_user_chat_history,
-    parse_sources_json,
-    save_chat_message,
+from app.services.chat_service import (
+    delete_all_chat_history,
+    delete_single_chat_message,
+    get_chat_history_items,
+    handle_chat_message,
 )
-from app.services.llm_service import generate_response
-from app.services.rag_index_service import search_chunks_by_keyword
 
 router = APIRouter(
     prefix="/chat",
@@ -34,44 +31,15 @@ def chat(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    retrieved_chunks = search_chunks_by_keyword(
-        query=request.question,
-        user_id=current_user.id,
-        top_k=3
-    )
-
-    context = "\n\n".join(
-        [
-            f"Source: {chunk['filename']} | Chunk {chunk['chunk_index']}\n{chunk['content']}"
-            for chunk in retrieved_chunks
-        ]
-    )
-
-    answer = generate_response(
-        question=request.question,
-        context=context
-    )
-
-    source_items = [
-        {
-            "filename": chunk["filename"],
-            "chunk_index": chunk["chunk_index"],
-            "score": chunk["score"]
-        }
-        for chunk in retrieved_chunks
-    ]
-
-    save_chat_message(
+    result = handle_chat_message(
         db=db,
         user=current_user,
-        question=request.question,
-        answer=answer,
-        sources=source_items
+        question=request.question
     )
 
     return ChatResponse(
-        question=request.question,
-        answer=answer,
+        question=result["question"],
+        answer=result["answer"],
         disclaimer=(
             "This chatbot provides general health information only "
             "and does not replace professional medical advice."
@@ -82,7 +50,7 @@ def chat(
                 chunk_index=source["chunk_index"],
                 score=source["score"]
             )
-            for source in source_items
+            for source in result["sources"]
         ]
     )
 
@@ -93,36 +61,30 @@ def get_chat_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    chat_messages = get_user_chat_history(
+    history_items = get_chat_history_items(
         db=db,
         user=current_user,
         limit=limit
     )
 
-    history_items = []
-
-    for message in chat_messages:
-        sources = parse_sources_json(message.sources_json)
-
-        history_items.append(
+    return ChatHistoryResponse(
+        history=[
             ChatHistoryItem(
-                id=message.id,
-                question=message.question,
-                answer=message.answer,
+                id=item["id"],
+                question=item["question"],
+                answer=item["answer"],
                 sources=[
                     ChatSource(
                         filename=source["filename"],
                         chunk_index=source["chunk_index"],
                         score=source["score"]
                     )
-                    for source in sources
+                    for source in item["sources"]
                 ],
-                created_at=message.created_at
+                created_at=item["created_at"]
             )
-        )
-
-    return ChatHistoryResponse(
-        history=history_items,
+            for item in history_items
+        ],
         count=len(history_items)
     )
 
@@ -132,7 +94,7 @@ def delete_chat_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    deleted_count = delete_user_chat_history(
+    deleted_count = delete_all_chat_history(
         db=db,
         user=current_user
     )
@@ -148,7 +110,7 @@ def delete_chat_message(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    delete_user_chat_message(
+    delete_single_chat_message(
         db=db,
         user=current_user,
         message_id=message_id

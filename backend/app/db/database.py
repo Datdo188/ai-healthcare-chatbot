@@ -1,5 +1,3 @@
-import time
-
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -35,23 +33,3 @@ def check_database_connection() -> bool:
         return True
     except Exception:
         return False
-
-
-def init_db_with_retry(max_retries: int = 10, delay_seconds: int = 2) -> None:
-    from app.db.models import User, ChatMessage, UploadedDocument
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            Base.metadata.create_all(bind=engine)
-            print("Database initialized successfully.")
-            return
-        except Exception as error:
-            print(
-                f"Database initialization failed "
-                f"(attempt {attempt}/{max_retries}): {error}"
-            )
-
-            if attempt == max_retries:
-                raise
-
-            time.sleep(delay_seconds)

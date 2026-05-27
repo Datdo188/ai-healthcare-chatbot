@@ -35,10 +35,6 @@ def index_document_chunks(
     chunks: List[str],
     user_id: int
 ) -> dict:
-    """
-    Store document chunks in ChromaDB using real vector embeddings.
-    """
-
     clean_chunks = [
         chunk.strip()
         for chunk in chunks
@@ -101,10 +97,6 @@ def delete_document_chunks(
     filename: str,
     user_id: int
 ) -> int:
-    """
-    Delete all vector chunks for a user's document from ChromaDB.
-    """
-
     existing = _collection.get(
         where={
             "$and": [
@@ -128,17 +120,12 @@ def delete_document_chunks(
 def search_relevant_chunks(
     query: str,
     user_id: int,
-    top_k: int = 3
+    top_k: int | None = None
 ) -> list[dict]:
-    """
-    Search document chunks using vector similarity.
-    Lower Chroma distance means more similar.
-    This returns score as similarity-like value: 1 - distance.
-    """
-
     if not query.strip():
         return []
 
+    top_k = top_k or settings.RAG_TOP_K
     query_embedding = generate_embedding(query)
 
     results = _collection.query(
@@ -169,6 +156,9 @@ def search_relevant_chunks(
     ):
         similarity_score = 1.0 - float(distance)
 
+        if similarity_score < settings.MIN_RELEVANCE_SCORE:
+            continue
+
         matched_chunks.append({
             "filename": metadata["filename"],
             "chunk_index": metadata["chunk_index"],
@@ -177,20 +167,3 @@ def search_relevant_chunks(
         })
 
     return matched_chunks
-
-
-def search_chunks_by_keyword(
-    query: str,
-    user_id: int,
-    top_k: int = 3
-) -> list[dict]:
-    """
-    Backward-compatible function name.
-    Internally this now performs real vector search, not keyword search.
-    """
-
-    return search_relevant_chunks(
-        query=query,
-        user_id=user_id,
-        top_k=top_k
-    )

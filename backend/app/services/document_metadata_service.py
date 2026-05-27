@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.models import UploadedDocument, User
@@ -20,11 +21,19 @@ def create_document_metadata(
         status=status_value
     )
 
-    db.add(document)
-    db.commit()
-    db.refresh(document)
+    try:
+        db.add(document)
+        db.commit()
+        db.refresh(document)
 
-    return document
+        return document
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save document metadata."
+        )
 
 
 def list_user_documents(
@@ -67,18 +76,55 @@ def update_document_status(
     document: UploadedDocument,
     status_value: str
 ) -> UploadedDocument:
-    document.status = status_value
+    try:
+        document.status = status_value
 
-    db.add(document)
-    db.commit()
-    db.refresh(document)
+        db.add(document)
+        db.commit()
+        db.refresh(document)
 
-    return document
+        return document
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update document status."
+        )
+
+
+def safe_update_document_status(
+    db: Session,
+    document: UploadedDocument,
+    status_value: str
+) -> None:
+    """
+    Best-effort status update.
+    Used inside error handlers so the original error is not hidden.
+    """
+
+    try:
+        document.status = status_value
+
+        db.add(document)
+        db.commit()
+        db.refresh(document)
+
+    except SQLAlchemyError:
+        db.rollback()
 
 
 def delete_document_metadata(
     db: Session,
     document: UploadedDocument
 ) -> None:
-    db.delete(document)
-    db.commit()
+    try:
+        db.delete(document)
+        db.commit()
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete document metadata."
+        )

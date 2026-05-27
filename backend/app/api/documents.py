@@ -1,39 +1,30 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import get_db
 from app.db.models import User
 from app.models.schemas import (
-    DocumentUploadResponse,
-    DocumentListResponse,
-    DocumentItem,
-    DocumentPreviewResponse,
     DocumentChunkResponse,
-    DocumentIndexResponse,
     DocumentDeleteResponse,
+    DocumentIndexResponse,
+    DocumentItem,
+    DocumentListResponse,
+    DocumentPreviewResponse,
     DocumentSearchResponse,
+    DocumentUploadResponse,
     RetrievedChunk,
 )
 from app.services.auth_service import get_current_user
-from app.services.document_metadata_service import (
-    create_document_metadata,
-    delete_document_metadata,
-    get_user_document_by_saved_filename,
-    list_user_documents,
-    update_document_status,
+from app.services.document_processing_service import (
+    delete_user_document,
+    get_document_chunks,
+    get_document_preview,
+    index_user_document,
+    list_documents_for_user,
+    search_user_documents,
+    upload_user_document,
 )
-from app.services.document_service import (
-    delete_document_file,
-    save_uploaded_document,
-)
-from app.services.text_extraction_service import extract_text_from_document
-from app.services.chunking_service import split_text_into_chunks
-from app.services.rag_index_service import (
-    delete_document_chunks,
-    index_document_chunks,
-    search_chunks_by_keyword,
-)
-
 
 router = APIRouter(
     prefix="/documents",
@@ -47,15 +38,10 @@ def upload_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    saved_file = save_uploaded_document(file)
-
-    document = create_document_metadata(
+    document = upload_user_document(
         db=db,
         user=current_user,
-        original_filename=saved_file["original_filename"],
-        saved_filename=saved_file["saved_filename"],
-        path=saved_file["path"],
-        status_value="uploaded"
+        file=file
     )
 
     return DocumentUploadResponse(
@@ -63,7 +49,6 @@ def upload_document(
         id=document.id,
         original_filename=document.original_filename,
         saved_filename=document.saved_filename,
-        path=document.path,
         status=document.status
     )
 
@@ -73,7 +58,7 @@ def get_documents(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    documents = list_user_documents(
+    documents = list_documents_for_user(
         db=db,
         user=current_user
     )
@@ -84,7 +69,6 @@ def get_documents(
                 id=document.id,
                 original_filename=document.original_filename,
                 saved_filename=document.saved_filename,
-                path=document.path,
                 status=document.status,
                 created_at=document.created_at
             )
@@ -97,12 +81,12 @@ def get_documents(
 @router.get("/search/", response_model=DocumentSearchResponse)
 def search_documents(
     query: str,
-    top_k: int = 3,
+    top_k: int = settings.RAG_TOP_K,
     current_user: User = Depends(get_current_user)
 ):
-    results = search_chunks_by_keyword(
+    results = search_user_documents(
+        user=current_user,
         query=query,
-        user_id=current_user.id,
         top_k=top_k
     )
 
@@ -127,20 +111,16 @@ def preview_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    document = get_user_document_by_saved_filename(
+    result = get_document_preview(
         db=db,
         user=current_user,
-        saved_filename=filename
+        filename=filename
     )
 
-    text = extract_text_from_document(document.path)
-    preview = text[:1000]
-
     return DocumentPreviewResponse(
-        filename=document.saved_filename,
-        path=document.path,
-        preview=preview,
-        character_count=len(text),
+        filename=result["filename"],
+        preview=result["preview"],
+        character_count=result["character_count"]
     )
 
 
@@ -150,19 +130,16 @@ def chunk_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    document = get_user_document_by_saved_filename(
+    result = get_document_chunks(
         db=db,
         user=current_user,
-        saved_filename=filename
+        filename=filename
     )
 
-    text = extract_text_from_document(document.path)
-    chunks = split_text_into_chunks(text)
-
     return DocumentChunkResponse(
-        filename=document.saved_filename,
-        chunk_count=len(chunks),
-        chunks=chunks[:5],
+        filename=result["filename"],
+        chunk_count=result["chunk_count"],
+        chunks=result["chunks"]
     )
 
 
@@ -172,25 +149,10 @@ def index_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    document = get_user_document_by_saved_filename(
+    result = index_user_document(
         db=db,
         user=current_user,
-        saved_filename=filename
-    )
-
-    text = extract_text_from_document(document.path)
-    chunks = split_text_into_chunks(text)
-
-    result = index_document_chunks(
-        filename=document.saved_filename,
-        chunks=chunks,
-        user_id=current_user.id
-    )
-
-    update_document_status(
-        db=db,
-        document=document,
-        status_value="indexed"
+        filename=filename
     )
 
     return DocumentIndexResponse(
@@ -206,27 +168,15 @@ def delete_document(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    document = get_user_document_by_saved_filename(
+    result = delete_user_document(
         db=db,
         user=current_user,
-        saved_filename=filename
-    )
-
-    deleted_file = delete_document_file(document.path)
-
-    deleted_chunks = delete_document_chunks(
-        filename=document.saved_filename,
-        user_id=current_user.id
-    )
-
-    delete_document_metadata(
-        db=db,
-        document=document
+        filename=filename
     )
 
     return DocumentDeleteResponse(
-        filename=filename,
-        deleted_file=deleted_file,
-        deleted_index_chunks=deleted_chunks,
-        message="Document deleted successfully."
+        filename=result["filename"],
+        deleted_file=result["deleted_file"],
+        deleted_index_chunks=result["deleted_index_chunks"],
+        message=result["message"]
     )

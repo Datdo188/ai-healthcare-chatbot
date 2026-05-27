@@ -5,10 +5,6 @@ from app.core.config import settings
 
 
 def generate_embedding(text: str) -> list[float]:
-    """
-    Generate a vector embedding using Ollama's embedding API.
-    """
-
     if not text.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -26,7 +22,6 @@ def generate_embedding(text: str) -> list[float]:
             json=payload,
             timeout=120
         )
-
     except requests.exceptions.RequestException as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -64,13 +59,54 @@ def generate_embedding(text: str) -> list[float]:
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """
-    Generate embeddings for a list of texts.
-    Kept simple and reliable by calling Ollama once per chunk.
-    """
-
-    return [
-        generate_embedding(text)
+    clean_texts = [
+        text.strip()
         for text in texts
         if text.strip()
     ]
+
+    if not clean_texts:
+        return []
+
+    payload = {
+        "model": settings.OLLAMA_EMBED_MODEL,
+        "input": clean_texts
+    }
+
+    try:
+        response = requests.post(
+            settings.OLLAMA_EMBED_URL,
+            json=payload,
+            timeout=300
+        )
+    except requests.exceptions.RequestException as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Embedding service unavailable: {str(error)}"
+        )
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                f"Embedding service error: {response.status_code} - "
+                f"{response.text}"
+            )
+        )
+
+    data = response.json()
+    embeddings = data.get("embeddings")
+
+    if not isinstance(embeddings, list):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Embedding service returned invalid embeddings."
+        )
+
+    if len(embeddings) != len(clean_texts):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Embedding count does not match input count."
+        )
+
+    return embeddings

@@ -3,18 +3,16 @@ import shutil
 from datetime import datetime
 from uuid import uuid4
 
-from fastapi import UploadFile, HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 
-UPLOAD_DIR = "data/medical_docs"
+from app.core.config import settings
+
+UPLOAD_DIR = settings.UPLOAD_DIR
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt"}
 
 
 def sanitize_filename(filename: str) -> str:
-    """
-    Remove unsafe path characters from uploaded filename.
-    """
-
     base_name = os.path.basename(filename or "").strip()
 
     if not base_name:
@@ -39,6 +37,14 @@ def sanitize_filename(filename: str) -> str:
     return safe_name
 
 
+def get_file_size_bytes(file: UploadFile) -> int:
+    file.file.seek(0, os.SEEK_END)
+    size = file.file.tell()
+    file.file.seek(0)
+
+    return size
+
+
 def validate_document(file: UploadFile) -> str:
     safe_filename = sanitize_filename(file.filename or "")
     _, extension = os.path.splitext(safe_filename.lower())
@@ -47,6 +53,24 @@ def validate_document(file: UploadFile) -> str:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only PDF and TXT files are allowed."
+        )
+
+    max_size_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+    file_size = get_file_size_bytes(file)
+
+    if file_size <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty."
+        )
+
+    if file_size > max_size_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"File is too large. Maximum allowed size is "
+                f"{settings.MAX_UPLOAD_SIZE_MB} MB."
+            )
         )
 
     return safe_filename
@@ -81,11 +105,6 @@ def save_uploaded_document(file: UploadFile) -> dict:
 
 
 def delete_document_file(file_path: str) -> bool:
-    """
-    Delete physical document file if it exists.
-    Returns True if deleted, False if file was already missing.
-    """
-
     if os.path.exists(file_path) and os.path.isfile(file_path):
         os.remove(file_path)
         return True

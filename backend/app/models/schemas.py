@@ -46,7 +46,6 @@ class DocumentUploadResponse(BaseModel):
     id: int
     original_filename: str
     saved_filename: str
-    path: str
     status: str
 
 
@@ -54,7 +53,6 @@ class DocumentItem(BaseModel):
     id: int
     original_filename: str
     saved_filename: str
-    path: str
     status: str
     created_at: datetime
 
@@ -66,7 +64,6 @@ class DocumentListResponse(BaseModel):
 
 class DocumentPreviewResponse(BaseModel):
     filename: str
-    path: str
     preview: str
     character_count: int
 

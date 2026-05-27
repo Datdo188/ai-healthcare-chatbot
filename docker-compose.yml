@@ -37,6 +37,8 @@ services:
       - ./backend/.env.docker
     volumes:
       - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
       - ./data:/app/data
     depends_on:
       postgres:
