@@ -1,7 +1,7 @@
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.db.models import UploadedDocument, User
+from app.models import UploadedDocument, User
 from app.services.chunking_service import split_text_into_chunks
 from app.services.document_metadata_service import (
     create_document_metadata,

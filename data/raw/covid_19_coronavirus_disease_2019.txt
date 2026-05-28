@@ -1,0 +1,35 @@
+Source: MedlinePlus.gov
+Topic: COVID-19 (Coronavirus Disease 2019)
+URL: https://medlineplus.gov/covid19coronavirusdisease2019.html
+Language: English
+
+Meta description:
+COVID-19 (coronavirus disease 2019) is a respiratory disease caused by a virus. It can be very contagious. Learn about symptoms, prevention, and treatment.
+
+Also called:
+- COVID-19
+- Coronavirus
+
+Groups:
+- Infections
+- Lungs and Breathing
+
+Summary:
+<p>COVID-19 (coronavirus disease 2019) is an illness caused by a virus. This virus is a coronavirus called SARS-CoV-2. It spreads when a person who has the infection breathes out droplets and very small particles that contain the virus. On this page, you'll find links to resources on important issues such as symptoms, risks, and how you can protect yourself and your family.</p>
+
+<p>We also have pages on:</p>
+<ul> 
+<li><a href="https://medlineplus.gov/covid19testing.html">COVID-19 testing</a></li>
+<li><a href="https://medlineplus.gov/covid19vaccines.html">COVID-19 vaccines</a></li>
+<li><a href="postcovidconditionslongcovid.html" tid="7807">Post-COVID conditions (long COVID)</a></li>
+</ul>
+
+Related topics:
+- Cleaning, Disinfecting, and Sanitizing
+- COVID-19 Testing
+- COVID-19 Vaccines
+- Germs and Hygiene
+- Pneumonia
+- Post-COVID Conditions (Long COVID)
+- Traveler's Health
+- Viral Infections

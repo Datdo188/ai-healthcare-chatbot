@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.models import UploadedDocument, User
+from app.models import UploadedDocument, User
 
 
 def create_document_metadata(

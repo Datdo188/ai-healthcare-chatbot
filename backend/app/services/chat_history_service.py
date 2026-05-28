@@ -3,7 +3,7 @@ import json
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db.models import ChatMessage, User
+from app.models import ChatMessage, User
 
 
 def save_chat_message(

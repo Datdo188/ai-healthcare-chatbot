@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:15
@@ -24,6 +26,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    gpus: all
     restart: unless-stopped
 
   backend:
@@ -33,33 +36,49 @@ services:
     container_name: ai-healthcare-backend
     ports:
       - "8000:8000"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
     env_file:
       - ./backend/.env.docker
+
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/alembic.ini:/app/alembic.ini
       - ./data:/app/data
+
     depends_on:
       postgres:
         condition: service_healthy
       ollama:
         condition: service_started
+
     restart: unless-stopped
 
-    frontend:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: ai-healthcare-frontend
     ports:
       - "5173:5173"
+
     env_file:
       - ./frontend/.env
+
     volumes:
       - ./frontend/src:/app/src
+
     depends_on:
       - backend
+
     restart: unless-stopped
 
 volumes:

@@ -132,9 +132,10 @@ def search_relevant_chunks(
         query_embeddings=[query_embedding],
         n_results=top_k,
         where={
-            "user_id": {
-                "$eq": user_id
-            }
+            "$or": [
+                {"user_id": {"$eq": user_id}},
+                {"user_id": {"$eq": 0}}
+            ]
         },
         include=[
             "documents",

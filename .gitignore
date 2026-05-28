@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# Env
+.env
+.env.local
+.env.docker
+backend/.env
+backend/.env.docker
+frontend/.env
+
+# Generated data
+data/chroma/
+data/chroma_db/
+data/medical_docs/
+
+# Large source files
+data/source/*.zip
+
+# Logs
+*.log

@@ -7,12 +7,19 @@ __pycache__/
 
 # Virtual environment
 venv/
+.venv/
 
 # Environment secrets
 .env
+.env.local
+.env.docker
 
 # FastAPI / local files
 *.log
+
+# Alembic / cache
+.pytest_cache/
+.mypy_cache/
 
 # VS Code
 .vscode/

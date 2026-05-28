@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.db.models import User
+from app.models import User
 from app.services.chat_history_service import (
     delete_user_chat_history,
     delete_user_chat_message,
